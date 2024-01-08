@@ -40,20 +40,16 @@ def check_negative_or_fractional(number):
     negative_fractional = number < 0 # or number % 1 != 0
     return negative_fractional
 
-# Converting fractional or signed number into floating binary and then back to decimal
-def float_to_custom_binary(decimal_number, sign_bits=1, exponent_bits=7, mantissa_bits=12, output_bits=20):
-    # Use struct.pack to convert the decimal number to its binary representation
-    binary_representation = struct.pack('>f', decimal_number)
-
-    # Use binascii.hexlify to convert the binary representation to hexadecimal
-    hexadecimal_representation = bytes.hex(binary_representation)
-
-    # Convert hexadecimal to binary
-    binary_result = bin(int(hexadecimal_representation, 16))[2:]
-
-    # Ensure a custom bit-width representation
-    binary_result = binary_result.zfill(32)[:output_bits]
-
+# Converting fractional or signed number into fixed binary and then back to decimal
+def decimal_to_fixed_point(decimal_number, integer=4, fraction=4):
+    integer_part = bin(int(abs(decimal_number)))[2:]
+    binary_integer = integer_part.zfill(integer)
+    fractional_part = bin(int((abs(decimal_number) - int(abs(decimal_number))) * 2**fraction))[2:]
+    binary_fraction = fractional_part.zfill(fraction)
+    binary_result = str(binary_integer) + str(binary_fraction)
+    if (decimal_number < 0):
+        inverted_bits = ''.join('1' if bit == '0' else '0' for bit in binary_result)
+        binary_result = bin(int(inverted_bits, 2) + 1)[2:]
     return int(binary_result, 2)
 
 # logging.basicConfig(level=logging.INFO)
@@ -91,11 +87,7 @@ class FIR(Module):
             self.z[i] = Signal(bits_sign=(38, True), name=f"z_{i}")
 
         for i in range(len(coefficients)):
-            if (check_negative_or_fractional(coefficients[i])):
-                a_sign = 0
-            else:
-                a_sign = 1
-            coefficients[i] = float_to_custom_binary(coefficients[i])
+            coefficients[i] = decimal_to_fixed_point(coefficients[i], 8, 8)     # Currently using a notation of Q8.8
             if (i == 0):
                 self.specials += Instance("DSP38",
 
@@ -116,7 +108,7 @@ class FIR(Module):
                     i_B             = self.data_in,
                     o_Z             = self.z[i],  
                     i_FEEDBACK      = C(4, 3),
-                    i_UNSIGNED_A    = a_sign,
+                    i_UNSIGNED_A    = 0,
                     i_UNSIGNED_B    = 0,
                     o_DLY_B         = self.delay_b[i],
                     i_LOAD_ACC      = 1,
@@ -146,7 +138,7 @@ class FIR(Module):
                     i_B             = self.delay_b[i - 1],
                     o_Z             = self.data_out,  
                     i_FEEDBACK      = C(4, 3),
-                    i_UNSIGNED_A    = a_sign,
+                    i_UNSIGNED_A    = 0,
                     i_UNSIGNED_B    = 0,
                     i_LOAD_ACC      = 1,
                     i_ACC_FIR       = C(0, 6),
@@ -175,7 +167,7 @@ class FIR(Module):
                     i_B             = self.delay_b[i - 1],
                     o_Z             = self.z[i],  
                     i_FEEDBACK      = C(4, 3),
-                    i_UNSIGNED_A    = a_sign,
+                    i_UNSIGNED_A    = 0,
                     i_UNSIGNED_B    = 0,
                     o_DLY_B         = self.delay_b[i],
                     i_LOAD_ACC      = 1,
