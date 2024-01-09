@@ -50,6 +50,11 @@ def decimal_to_fixed_point(decimal_number, integer=4, fraction=4):
     if (decimal_number < 0):
         inverted_bits = ''.join('1' if bit == '0' else '0' for bit in binary_result)
         binary_result = bin(int(inverted_bits, 2) + 1)[2:]
+
+    if len(binary_result) < 20:
+        sign_bit = binary_result[0]
+        sign_extension = sign_bit * (20 - len(binary_result))
+        binary_result = sign_extension + binary_result
     return int(binary_result, 2)
 
 # logging.basicConfig(level=logging.INFO)
