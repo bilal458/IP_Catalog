@@ -69,6 +69,7 @@ class FIR(Module):
 
         if (coefficients != ""):
             coefficients = extract_numbers(coefficients, coefficients_file)
+            coefficients.reverse()
 
         self.logger = logging.getLogger("FIR")
         self.logger.propagate = True
@@ -89,8 +90,7 @@ class FIR(Module):
 
         for i in range (len(coefficients)):
             self.delay_b[i] = Signal(bits_sign=(input_width, True), name=f"delay_b_{i}")
-            self.z[i] = Signal(bits_sign=(38, True), name=f"z_{i}")
-        coefficients.reverse()
+            self.z[i] = Signal(bits_sign=(38, True), name=f"z_{i}")        
 
         for i in range(len(coefficients)):
             coefficients[i] = decimal_to_fixed_point(coefficients[i], 8, 8)     # Currently using a notation of Q8.8
