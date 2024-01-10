@@ -37,14 +37,18 @@ def get_clkin_ios(data_in, data_out):
         ("data_out",   0,  Pins(data_out))
     ]
 
+# Check if any number in the list is a float with a non-zero fractional part
+def has_fractional_number(numbers):
+    return any(isinstance(number, float) and not number.is_integer() for number in numbers)
+
 # FIR Generator ----------------------------------------------------------------------------------
 class FIRGenerator(Module):
-    def __init__(self, platform, input_width, coefficients, coefficients_file):
+    def __init__(self, platform, input_width, coefficients, coefficients_file, coeff_fractional_bits):
         # Clocking ---------------------------------------------------------------------------------
         platform.add_extension(get_clkin_ios(input_width, 38))
         self.clock_domains.cd_sys  = ClockDomain()
 	
-        self.submodules.fir = fir = FIR(input_width, coefficients, coefficients_file)
+        self.submodules.fir = fir = FIR(input_width, coefficients, coefficients_file, coeff_fractional_bits)
     
         self.comb += fir.data_in.eq(platform.request("data_in"))
         self.comb += platform.request("data_out").eq(fir.data_out)
@@ -74,11 +78,13 @@ def main():
     
     # Core range value parameters.
     core_range_param_group = parser.add_argument_group(title="Core range parameters")
-    core_range_param_group.add_argument("--input_width",      type=int,   default=18,  	choices=range(1,19),   help="FIR Width")
+    core_range_param_group.add_argument("--input_width",      type=int,   default=18,  	choices=range(1,19),   help="Input Data Width of the FIR")
+    core_range_param_group.add_argument("--input_fractional_bits",  type=int,   default=8,  	choices=range(1,19),   help="Fractional Bit Width of the input data")
+    core_range_param_group.add_argument("--coeff_fractional_bits",  type=int,   default=8,  	choices=range(1,19),   help="Fractional Bit Width of the coefficients")
 
     # Core file path parameters.
     core_file_path_group = parser.add_argument_group(title="Core file path parameters")
-    core_file_path_group.add_argument("--coefficients",    type=str,   default="", help="Space-separated coefficients for FIR Filter")
+    core_file_path_group.add_argument("--coefficients",    type=str,   default="", help="Space or comma-separated coefficients in base 10 for FIR Filter")
 
     # Core bool value parameters.
     core_bool_param_group = parser.add_argument_group(title="Core bool parameters")
@@ -112,14 +118,12 @@ def main():
         if (args.coefficients_file == False):
             option_strings_to_remove = ['--file_path']
             parser._actions = [action for action in parser._actions if action.option_strings and action.option_strings[0] not in option_strings_to_remove]
-            dep_dict.update({
-                'file_path'    :   'True'
-            })
         else:
             option_strings_to_remove = ['--coefficients']
             parser._actions = [action for action in parser._actions if action.option_strings and action.option_strings[0] not in option_strings_to_remove]
+        if (has_fractional_number(extract_numbers(args.coefficients, args.coefficients_file))):
             dep_dict.update({
-                'coefficients' : 'True'
+                'coeff_fractional_bits' : 'True'
             })
 
     if (not args.coefficients_file):
@@ -150,7 +154,8 @@ def main():
     module   = FIRGenerator(platform,
             input_width       = args.input_width,
             coefficients      = coefficients,
-            coefficients_file = args.coefficients_file
+            coefficients_file = args.coefficients_file,
+            coeff_fractional_bits   = args.coeff_fractional_bits
     )
 
     # Build Project --------------------------------------------------------------------------------

@@ -65,7 +65,7 @@ logging.info(f'Log started at {timestamp}')
 
 # FIR Generator ---------------------------------------------------------------------------------------
 class FIR(Module):
-    def __init__(self, input_width, coefficients, coefficients_file):
+    def __init__(self, input_width, coefficients, coefficients_file, fractional_bits):
 
         if (coefficients != ""):
             coefficients = extract_numbers(coefficients, coefficients_file)
@@ -93,7 +93,7 @@ class FIR(Module):
             self.z[i] = Signal(bits_sign=(38, True), name=f"z_{i}")        
 
         for i in range(len(coefficients)):
-            coefficients[i] = decimal_to_fixed_point(coefficients[i], 8, 8)     # Currently using a notation of Q8.8
+            coefficients[i] = decimal_to_fixed_point(coefficients[i], 20 - fractional_bits, fractional_bits)     # Currently using a notation of Q8.8
             if (i == 0):
                 self.specials += Instance("DSP38",
 
