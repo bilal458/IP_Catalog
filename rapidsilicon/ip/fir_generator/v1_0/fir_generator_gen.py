@@ -79,7 +79,7 @@ def main():
     # Core range value parameters.
     core_range_param_group = parser.add_argument_group(title="Core range parameters")
     core_range_param_group.add_argument("--input_width",      type=int,   default=18,  	choices=range(1,19),   help="Input Data Width of the FIR")
-    core_range_param_group.add_argument("--coeff_fractional_bits",  type=int,   default=8,  	choices=range(1,19),   help="Fractional Bit Width of the coefficients")
+    core_range_param_group.add_argument("--coeff_fractional_bits",  type=int,   default=8,  	choices=range(1,21),   help="Fractional Bit Width of the coefficients")
 
     # Core file path parameters.
     core_file_path_group = parser.add_argument_group(title="Core file path parameters")
@@ -126,7 +126,6 @@ def main():
             dep_dict.update({
                 'coeff_fractional_bits' : 'True'
             })
-        parser._actions[2] = range (1, args.input_width)
 
     if (not args.coefficients_file):
         coefficients = args.coefficients
