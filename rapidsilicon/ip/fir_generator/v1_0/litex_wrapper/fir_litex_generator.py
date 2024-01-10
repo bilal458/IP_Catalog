@@ -65,7 +65,7 @@ logging.info(f'Log started at {timestamp}')
 
 # FIR Generator ---------------------------------------------------------------------------------------
 class FIR(Module):
-    def __init__(self, input_width, coefficients, coefficients_file, fractional_bits):
+    def __init__(self, input_width, coefficients, coefficients_file, fractional_bits, signed):
 
         if (coefficients != ""):
             coefficients = extract_numbers(coefficients, coefficients_file)
@@ -77,23 +77,23 @@ class FIR(Module):
         
         # Data Width
         self.logger.info(f"DATA_WIDTH_IN       : {input_width}")
-        self.logger.info(f"DATA_WIDTH_OUT       : {38}")
+        self.logger.info(f"DATA_WIDTH_OUT       : {input_width + 20}")
         self.logger.info(f"Coefficients       : {coefficients}")
 
         self.logger.info(f"===================================================")
 
         self.data_in = Signal(bits_sign=(input_width, True))
-        self.data_out = Signal(bits_sign=(38, True))
+        self.data_out = Signal(bits_sign=(input_width + 20, True))
 
         self.z = Array(Signal() for _ in range (len(coefficients)))
         self.delay_b = Array(Signal() for _ in range (len(coefficients)))
 
         for i in range (len(coefficients)):
             self.delay_b[i] = Signal(bits_sign=(input_width, True), name=f"delay_b_{i}")
-            self.z[i] = Signal(bits_sign=(38, True), name=f"z_{i}")        
+            self.z[i] = Signal(bits_sign=(input_width + 20, True), name=f"z_{i}")        
 
         for i in range(len(coefficients)):
-            coefficients[i] = decimal_to_fixed_point(coefficients[i], 20 - fractional_bits, fractional_bits)     # Currently using a notation of Q8.8
+            coefficients[i] = decimal_to_fixed_point(coefficients[i], 20 - fractional_bits, fractional_bits)     # Using Notation of QN.M
             if (i == 0):
                 self.specials += Instance("DSP38",
 
@@ -115,7 +115,7 @@ class FIR(Module):
                     o_Z             = self.z[i],  
                     i_FEEDBACK      = C(4, 3),
                     i_UNSIGNED_A    = 0,
-                    i_UNSIGNED_B    = 0,
+                    i_UNSIGNED_B    = not signed,
                     o_DLY_B         = self.delay_b[i],
                     i_LOAD_ACC      = 1,
                     i_ACC_FIR       = C(0, 6),
@@ -145,7 +145,7 @@ class FIR(Module):
                     o_Z             = self.data_out,  
                     i_FEEDBACK      = C(4, 3),
                     i_UNSIGNED_A    = 0,
-                    i_UNSIGNED_B    = 0,
+                    i_UNSIGNED_B    = not signed,
                     i_LOAD_ACC      = 1,
                     i_ACC_FIR       = C(0, 6),
                     i_ROUND         = 0,
@@ -174,7 +174,7 @@ class FIR(Module):
                     o_Z             = self.z[i],  
                     i_FEEDBACK      = C(4, 3),
                     i_UNSIGNED_A    = 0,
-                    i_UNSIGNED_B    = 0,
+                    i_UNSIGNED_B    = not signed,
                     o_DLY_B         = self.delay_b[i],
                     i_LOAD_ACC      = 1,
                     i_ACC_FIR       = C(0, 6),
