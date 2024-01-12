@@ -43,12 +43,12 @@ def has_fractional_number(numbers):
 
 # FIR Generator ----------------------------------------------------------------------------------
 class FIRGenerator(Module):
-    def __init__(self, platform, input_width, coefficients, coefficients_file, coeff_fractional_bits, signed):
+    def __init__(self, platform, input_width, coefficients, coefficients_file, coeff_fractional_bits, signed, optimization):
         # Clocking ---------------------------------------------------------------------------------
         platform.add_extension(get_clkin_ios(input_width, input_width + 20))
         self.clock_domains.cd_sys  = ClockDomain()
 	
-        self.submodules.fir = fir = FIR(input_width, coefficients, coefficients_file, coeff_fractional_bits, signed)
+        self.submodules.fir = fir = FIR(input_width, coefficients, coefficients_file, coeff_fractional_bits, signed, optimization)
     
         self.comb += fir.data_in.eq(platform.request("data_in"))
         self.comb += platform.request("data_out").eq(fir.data_out)
@@ -75,6 +75,10 @@ def main():
     logging.info("===================================================")
     logging.info("IP    : %s", rs_builder.ip_name.upper())
     logging.info(("==================================================="))
+
+    # Core string parameters.
+    core_string_param_group = parser.add_argument_group(title="Core string parameters")
+    core_string_param_group.add_argument("--optimization",     type=str,      default="Area Optimized",      choices=["Speed Optimized","Area Optimized"],    help="Choose what optimization is required")
     
     # Core range value parameters.
     core_range_param_group = parser.add_argument_group(title="Core range parameters")
@@ -157,7 +161,8 @@ def main():
             coefficients      = coefficients,
             coefficients_file = args.coefficients_file,
             coeff_fractional_bits   = args.coeff_fractional_bits,
-            signed            = args.signed
+            signed            = args.signed,
+            optimization      = args.optimization
     )
 
     # Build Project --------------------------------------------------------------------------------

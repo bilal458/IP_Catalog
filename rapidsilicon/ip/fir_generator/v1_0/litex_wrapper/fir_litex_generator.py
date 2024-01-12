@@ -8,8 +8,6 @@
 
 import datetime
 import logging
-import math
-import struct
 from migen import *
 import re
 
@@ -65,7 +63,7 @@ logging.info(f'Log started at {timestamp}')
 
 # FIR Generator ---------------------------------------------------------------------------------------
 class FIR(Module):
-    def __init__(self, input_width, coefficients, coefficients_file, fractional_bits, signed):
+    def __init__(self, input_width, coefficients, coefficients_file, fractional_bits, signed, optimization):
 
         if (coefficients != ""):
             coefficients = extract_numbers(coefficients, coefficients_file)
@@ -82,15 +80,15 @@ class FIR(Module):
 
         self.logger.info(f"===================================================")
 
-        self.data_in = Signal(bits_sign=(input_width, True))
-        self.data_out = Signal(bits_sign=(input_width + 20, True))
+        self.data_in = Signal(bits_sign=(input_width, True if signed else False))
+        self.data_out = Signal(bits_sign=(input_width + 20, True if signed else False))
 
         self.z = Array(Signal() for _ in range (len(coefficients)))
         self.delay_b = Array(Signal() for _ in range (len(coefficients)))
 
         for i in range (len(coefficients)):
-            self.delay_b[i] = Signal(bits_sign=(input_width, True), name=f"delay_b_{i}")
-            self.z[i] = Signal(bits_sign=(input_width + 20, True), name=f"z_{i}")        
+            self.delay_b[i] = Signal(bits_sign=(input_width, True if signed else False), name=f"delay_b_{i}")
+            self.z[i] = Signal(bits_sign=(input_width + 20, True if signed else False), name=f"z_{i}")        
 
         for i in range(len(coefficients)):
             coefficients[i] = decimal_to_fixed_point(coefficients[i], 20 - fractional_bits, fractional_bits)     # Using Notation of QN.M
