@@ -13,10 +13,11 @@ module FIR_generator (
 );
 
 // Define the coefficients
-  localparam COEFF_0 = 1048551;
-  localparam COEFF_1 = 51;
-  localparam COEFF_2 = 102;
-  localparam COEFF_3 = 51;
+  localparam COEFF_0 = 20'hA;
+  localparam COEFF_1 = 20'hB;
+  localparam COEFF_2 = 20'hC;
+  localparam COEFF_3 = 20'hD;
+
   reg [17:0] delay_in1;
   reg [17:0] delay_in2;
   reg [17:0] delay_in3;
@@ -24,8 +25,55 @@ module FIR_generator (
   reg [17:0] delay_in5;
   reg [17:0] delay_in6;
   reg [17:0] delay_in7;
+  reg [17:0] delay_in8;
+  reg [17:0] delay_in9;
+  reg [17:0] delay_in10;
+  reg [17:0] delay_in11;
+  reg [17:0] delay_in12;
+  reg [17:0] delay_in13;
+  reg [17:0] delay_in14;
   wire [17:0] delay_b_0;
   wire [19:0] data_out1;
+
+
+  reg [15:0] shift_register [0:3];
+  reg [3:0] shift_counter;
+  reg [15:0] filtered_output;
+
+  always_ff @(posedge clk or posedge rst) begin
+    if (rst) begin
+      // Reset on rst
+      for (int i = 0; i < 4; i = i + 1) begin
+        shift_register[i] <= 16'b0;
+      end
+      shift_counter <= 4'b0;
+      filtered_output <= 16'b0;
+    end else begin
+      // Increment the counter
+      shift_counter <= (shift_counter == 3) ? 4'b0 : shift_counter + 1;
+
+      // Shift in new data after 4 cycles
+      // if (shift_counter == 3) begin
+        shift_register[0] <= data_in;
+        for (int i = 1; i < 4; i = i + 1) begin
+          shift_register[i] <= shift_register[i - 1];
+        end
+      // end
+
+      // Compute filter output after 4 cycles
+      // if (shift_counter == 3) begin
+        filtered_output <= shift_register[0] + shift_register[1] + shift_register[2] + shift_register[3];
+      end
+    // end
+  end
+
+  initial begin
+  $dumpfile("fir.vcd");
+  for (integer idx = 0; idx < 4; idx = idx + 1) $dumpvars(0, shift_register[idx]);
+end
+
+
+
 
   always @(posedge clk) begin
     delay_in1 <= data_in;

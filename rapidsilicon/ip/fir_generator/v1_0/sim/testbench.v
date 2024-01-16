@@ -28,10 +28,22 @@ fir fir_dut(
 
 
 initial begin
-    for (integer i = 0; i <=30; i = i + 1) begin
-        din <= $random;
+        din <= 1;
         repeat(1) @ (posedge clk);
-    end
+        din <= 2;
+        repeat(1) @ (posedge clk);
+        din <= 3;
+        repeat(1) @ (posedge clk);
+        din <= 4;
+        repeat(1) @ (posedge clk);
+        din <= 5;
+        repeat(1) @ (posedge clk);
+        din <= 6;
+        repeat(1) @ (posedge clk);
+        din <= 7;
+        repeat(1) @ (posedge clk);
+        din <= 90;
+        repeat(1) @ (posedge clk);
     #500;
     $finish;
 end

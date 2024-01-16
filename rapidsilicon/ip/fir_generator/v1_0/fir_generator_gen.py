@@ -43,12 +43,12 @@ def has_fractional_number(numbers):
 
 # FIR Generator ----------------------------------------------------------------------------------
 class FIRGenerator(Module):
-    def __init__(self, platform, input_width, coefficients, coefficients_file, coeff_fractional_bits, signed, optimization):
+    def __init__(self, platform, input_width, coefficients, coefficients_file, coeff_fractional_bits, signed, optimization, ram_pipeline):
         # Clocking ---------------------------------------------------------------------------------
         platform.add_extension(get_clkin_ios(input_width, input_width + 20))
         self.clock_domains.cd_sys  = ClockDomain()
 	
-        self.submodules.fir = fir = FIR(input_width, coefficients, coefficients_file, coeff_fractional_bits, signed, optimization)
+        self.submodules.fir = fir = FIR(input_width, coefficients, coefficients_file, coeff_fractional_bits, signed, optimization, ram_pipeline)
     
         self.comb += fir.data_in.eq(platform.request("data_in"))
         self.comb += platform.request("data_out").eq(fir.data_out)
@@ -78,12 +78,13 @@ def main():
 
     # Core string parameters.
     core_string_param_group = parser.add_argument_group(title="Core string parameters")
-    core_string_param_group.add_argument("--optimization",     type=str,      default="Area Optimized",      choices=["Speed Optimized","Area Optimized"],    help="Choose what optimization is required")
+    core_string_param_group.add_argument("--optimization",     type=str,      default="Area",      choices=["Performance","Area"],    help="Choose what optimization is required")
     
     # Core range value parameters.
     core_range_param_group = parser.add_argument_group(title="Core range parameters")
     core_range_param_group.add_argument("--input_width",      type=int,   default=18,  	choices=range(1,19),   help="Input Data Width of the FIR")
     core_range_param_group.add_argument("--coeff_fractional_bits",  type=int,   default=8,  	choices=range(1,21),   help="Fractional Bit Width of the coefficients")
+    core_range_param_group.add_argument("--ram_pipeline",  type=int,   default=512,  	choices=range(1,1024),   help="Pipelined Stack for Area Optimization")
 
     # Core file path parameters.
     core_file_path_group = parser.add_argument_group(title="Core file path parameters")
@@ -138,17 +139,29 @@ def main():
     
     summary = {}
     if (args.coefficients_file):
+        if (args.optimization == "Area"):
+            summary ["Area Optimized"] = "The coefficients file can be changed after IP generation but the count of coefficients should remain same."
+            summary ["Number of DSPs"] = "1"
+        else:
+            summary ["Speed Optimized"] = "The coefficients file cannot be changed after IP generation."
+            summary ["Number of DSPs"] = len(extract_numbers(coefficients, args.coefficients_file))
         if (args.file_path == ""):
-            summary ["Coefficients"] = "0"
+            summary ["Coefficients"] = "None"
             summary ["File"] = "No file provided"
         elif (is_valid_extension(coefficients)):
             summary ["Coefficients"] = ', '.join(map(str, extract_numbers(coefficients, args.coefficients_file)))
             summary ["Number of Stages"] = len(extract_numbers(coefficients, args.coefficients_file))
         else:
-            summary ["Coefficients"] = "0"
+            summary ["Coefficients"] = "None"
             summary["File Not Valid"] = "Only .txt and .hex file formats are supported."
     else:
         summary ["Number of Stages"] = len(extract_numbers(coefficients, args.coefficients_file))
+        if (args.optimization == "Area"):
+            summary ["Optimization"] = "Area"
+            summary ["Number of DSPs"] = "1"
+        else:
+            summary ["Optimization"] = "Performance"
+            summary ["Number of DSPs"] = len(extract_numbers(coefficients, args.coefficients_file))
 
     # Export JSON Template (Optional) --------------------------------------------------------------
     if args.json_template:
@@ -162,7 +175,8 @@ def main():
             coefficients_file = args.coefficients_file,
             coeff_fractional_bits   = args.coeff_fractional_bits,
             signed            = args.signed,
-            optimization      = args.optimization
+            optimization      = args.optimization,
+            ram_pipeline    = args.ram_pipeline
     )
 
     # Build Project --------------------------------------------------------------------------------
@@ -211,6 +225,28 @@ def main():
                 
         with open(os.path.join(wrapper), "w") as file:
             file.writelines(new_lines)
+
+        if (args.optimization == "Area"):
+            with open(wrapper, 'r') as file:
+                lines = file.readlines()
+
+            # Find the line number containing "endmodule"
+            endmodule_line_number = None
+            for i, line in enumerate(lines):
+                if "endmodule" in line:
+                    endmodule_line_number = i
+            
+            read_mem = """
+initial begin
+    $readmemh("{}", coefficients);
+end
+""".format(args.file_path)
+
+            lines.insert(endmodule_line_number, f"{read_mem}\n")
+            # Write the modified content back to the file
+            with open(wrapper, 'w') as file:
+                file.writelines(lines)
+
 
 if __name__ == "__main__":
     main()
